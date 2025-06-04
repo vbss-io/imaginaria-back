@@ -1,8 +1,0 @@
-{
-  "watch": [
-    "src/@api",
-    "src/prompt"
-  ],
-  "ext": "ts",
-  "exec": "ts-node-dev -r tsconfig-paths/register src/prompt/main.ts"
-}

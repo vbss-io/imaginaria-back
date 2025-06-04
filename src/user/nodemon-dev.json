@@ -1,8 +1,0 @@
-{
-  "watch": [
-    "src/@api",
-    "src/user"
-  ],
-  "ext": "ts",
-  "exec": "ts-node-dev -r tsconfig-paths/register src/user/main.ts"
-}
