@@ -1,45 +1,45 @@
 import 'dotenv/config'
-import 'express-async-errors'
 
-import { CronJobModule } from '@/@cron/application/CronJobModule'
-import { AuthModule } from '@/auth/application/AuthModule'
-import { ExpressAuthHandler } from '@/auth/infra/auth/ExpressAuthHandler'
-import { BatchModule } from '@/batch/application/BatchModule'
-import { ImageModule } from '@/image/application/ImageModule'
-import { PromptModule } from '@/prompt/application/PromptModule'
-import { UserModule } from '@/user/application/UserModule'
-import { VideoModule } from '@/video/application/VideoModule'
-import { StatusModule } from '@api/application/StatusModule'
-import { MongooseAdapter } from '@api/infra/database/MongooseAdapter'
-import { Registry } from '@api/infra/dependency-injection/Registry'
-import { ExpressErrorHandler } from '@api/infra/errors/ErrorHandler'
-import { AxiosAdapter } from '@api/infra/http/AxiosAdapter'
-import { ExpressAdapter } from '@api/infra/http/ExpressAdapter'
-import { InMemoryQueueAdapter } from '@api/infra/queue/InMemoryQueueAdapter'
+import { AuthModule } from '@/application/modules/auth.module'
+import { ImagesModule } from '@/application/modules/images.module'
+import { StatusModule } from '@/application/modules/status.module'
+import { UsersModule } from '@/application/modules/users.module'
+import { InMemoryCacheAdapter } from '@/infra/adapters/cache/in-memory-cache-adapter'
+import { MongooseAdapter } from '@/infra/adapters/database/mongoose-adapter'
+import { AxiosAdapter } from '@/infra/adapters/http/axios-adapter'
+import { ExpressAdapter } from '@/infra/adapters/http/express-adapter'
+import { WinstonLoggerAdapter } from '@/infra/adapters/logger/winston-logger-adapter'
+import { InMemoryQueueAdapter } from '@/infra/adapters/queue/in-memory-queue-adapter'
+import { AzureImageStorageAdapter } from '@/infra/adapters/storage/azure-storage-adapter'
+import { Registry } from '@/infra/dependency-injection/registry'
+import { ExpressAuthHandler } from '@/infra/handlers/express-auth-handler'
+import { ExpressErrorHandler } from '@/infra/handlers/express-error-handler'
+import { ExpressHttpLoggerHandler } from '@/infra/handlers/express-http-logger-handler'
+import { FileConverterService } from '@/infra/services/file-converter.service'
 
-function main (): any {
-  const errorHandler = new ExpressErrorHandler()
-  const authHandler = new ExpressAuthHandler()
-  Registry.getInstance().provide('errorHandler', errorHandler)
-  Registry.getInstance().provide('authHandler', authHandler)
-  const httpServer = new ExpressAdapter()
-  const httpClient = new AxiosAdapter()
-  const queue = new InMemoryQueueAdapter()
-  void queue.connect()
-  const databaseConnection = new MongooseAdapter(String(process.env.MONGO_URI))
+const PORT = Number(process.env.PORT ?? 3000)
+
+function main(): void {
+  const registry = Registry.getInstance()
+  const cache = InMemoryCacheAdapter.getInstance()
+  registry.provide('cache', cache)
+  registry.provide('queue', new InMemoryQueueAdapter())
+  registry.provide('logger', new WinstonLoggerAdapter())
+  registry.provide('httpClient', new AxiosAdapter())
+  registry.provide('fileConverterService', new FileConverterService())
+  registry.provide('fileStorage', new AzureImageStorageAdapter())
+  registry.provide('errorHandler', new ExpressErrorHandler())
+  registry.provide('authHandler', new ExpressAuthHandler())
+  registry.provide('httpLoggerHandler', new ExpressHttpLoggerHandler())
+  const databaseConnection = new MongooseAdapter()
+  registry.provide('databaseConnection', databaseConnection)
   void databaseConnection.connect()
-  Registry.getInstance().provide('httpServer', httpServer)
-  Registry.getInstance().provide('httpClient', httpClient)
-  Registry.getInstance().provide('queue', queue)
-  Registry.getInstance().provide('databaseConnection', databaseConnection)
+  const httpServer = new ExpressAdapter()
+  registry.provide('httpServer', httpServer)
   new StatusModule()
-  new UserModule()
+  new UsersModule()
   new AuthModule()
-  new BatchModule()
-  new PromptModule()
-  new ImageModule()
-  new VideoModule()
-  new CronJobModule()
-  httpServer.start(Number(process.env.PORT))
+  new ImagesModule()
+  httpServer.start(PORT)
 }
 main()
